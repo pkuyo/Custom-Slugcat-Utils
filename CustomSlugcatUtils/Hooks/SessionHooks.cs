@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Mono.Cecil.Cil;
+using MonoMod.Cil;
 using MonoMod.RuntimeDetour;
 using RWCustom;
 using SlugBase;
@@ -19,7 +21,9 @@ namespace CustomSlugcatUtils.Hooks
         private static readonly GameFeature<SlugcatStats.Name> StoryRegionPriorityOverride = new("guide_region_priority_override", JsonUtils.ToExtEnum<SlugcatStats.Name>);
 
         private static readonly GameFeature<int> OverseerSymbol = new("guide_overseer_symbol", JsonUtils.ToInt);
-
+        
+        private static readonly GameFeature<float> ProgressionShowTendency = new("guide_progression_show_tendency", JsonUtils.ToFloat);
+        
         private static readonly GameFeature<string> OverseerSymbolCustom = new("guide_overseer_symbol_custom", JsonUtils.ToString);
 
         private static readonly PlayerFeature<float> SpearDamage = new("spear_damage", JsonUtils.ToFloat);
@@ -62,7 +66,7 @@ namespace CustomSlugcatUtils.Hooks
         {
             On.RainWorldGame.SpawnPlayers_bool_bool_bool_bool_WorldCoordinate +=
                 RainWorldGame_SpawnPlayers_bool_bool_bool_bool_WorldCoordinate;
-            _ = new Hook(typeof(OverseerGraphics).GetProperty(nameof(OverseerGraphics.MainColor)).GetGetMethod(),
+            _ = new Hook(typeof(OverseerGraphics).GetProperty(nameof(OverseerGraphics.MainColor))!.GetGetMethod(),
                 (Func<OverseerGraphics, Color> orig, OverseerGraphics self) =>
                 {
                     if (PlayerGuideColor.TryGet(self.overseer.abstractCreature.world.game, out var color))
@@ -73,10 +77,28 @@ namespace CustomSlugcatUtils.Hooks
             On.OverseersWorldAI.DirectionFinder.StoryRegionPrioritys += DirectionFinder_StoryRegionPrioritys;
             On.OverseersWorldAI.DynamicGuideSymbolUpdate += OverseersWorldAI_DynamicGuideSymbolUpdate;
             On.OverseerHolograms.OverseerHologram.OverseerGuidanceSymbol += OverseerHologram_OverseerGuidanceSymbol;
-
+            IL.OverseerCommunicationModule.ReevaluateConcern += OverseerCommunicationModule_ReevaluateConcern;
             On.Player.ThrownSpear += Player_ThrownSpear;
 
         }
+
+        private static void OverseerCommunicationModule_ReevaluateConcern(ILContext il)
+        {
+            ILCursor c = new ILCursor(il);
+            c.GotoNext(i => i.MatchLdarg(0),
+                i => i.MatchLdsfld<OverseerCommunicationModule.PlayerConcern>("None"),
+                i => i.MatchStfld<OverseerCommunicationModule>("currentConcern"));
+            c.GotoPrev(MoveType.After, _ => true);
+            c.Emit(OpCodes.Ldarg_0);
+            c.EmitDelegate((OverseerCommunicationModule self) =>
+            {
+                if (self.room.world.overseersWorldAI.directionFinder != null &&
+                    self.room.world.overseersWorldAI.directionFinder.done && ProgressionShowTendency.TryGet(self.room.world.game,out var f))
+                    self.progressionShowTendency = f;
+            });
+
+        }
+
 
         private static void Player_ThrownSpear(On.Player.orig_ThrownSpear orig, Player self, Spear spear)
         {
@@ -107,7 +129,8 @@ namespace CustomSlugcatUtils.Hooks
                 self.world.game.GetStorySession.saveState.miscWorldSaveData.playerGuideState.guideSymbol = -1;
         }
 
-        private static List<string> DirectionFinder_StoryRegionPrioritys(On.OverseersWorldAI.DirectionFinder.orig_StoryRegionPrioritys orig, OverseersWorldAI.DirectionFinder self, SlugcatStats.Name saveStateNumber, string currentRegion, bool metMoon, bool metPebbles)
+        private static List<string> DirectionFinder_StoryRegionPrioritys(On.OverseersWorldAI.DirectionFinder.orig_StoryRegionPrioritys orig,
+            OverseersWorldAI.DirectionFinder self, SlugcatStats.Name saveStateNumber, string currentRegion, bool metMoon, bool metPebbles)
         {
             var re = orig(self,saveStateNumber,currentRegion,metMoon,metPebbles);
             if (StoryRegionPriority.TryGet(self.world.game, out var data))

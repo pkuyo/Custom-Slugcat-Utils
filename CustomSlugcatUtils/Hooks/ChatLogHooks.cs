@@ -60,7 +60,7 @@ namespace CustomSlugcatUtils.Hooks
                 LoadChatLogID();
         }
 
-        private static void ChatLogDisplay_ctor(On.MoreSlugcats.ChatLogDisplay.orig_ctor orig, MoreSlugcats.ChatLogDisplay self, HUD.HUD hud, string[] chatLog)
+        private static void ChatLogDisplay_ctor(On.MoreSlugcats.ChatLogDisplay.orig_ctor orig, ChatLogDisplay self, HUD.HUD hud, string[] chatLog)
         {
             orig(self, hud, chatLog);
             for (int i = 0; i < chatLog.Length; i++)
@@ -99,8 +99,33 @@ namespace CustomSlugcatUtils.Hooks
             if (id != null && PathMaps.TryGetValue(id,out var dirPath))
             {
                 string path = $"{dirPath}/{LocalizationTranslator.LangShort(Custom.rainWorld.inGameTranslator.currentLanguage)}.txt";
+                
                 if (!File.Exists(AssetManager.ResolveFilePath(path)))
                     path = $"{dirPath}/{LocalizationTranslator.LangShort(InGameTranslator.LanguageID.English)}.txt";
+                
+                if (!File.Exists(AssetManager.ResolveFilePath(path)))
+                {
+                    foreach (var lan in InGameTranslator.LanguageID.values.entries.Where(i =>
+                                     i != Custom.rainWorld.inGameTranslator.currentLanguage.value &&
+                                     i != InGameTranslator.LanguageID.English.value)
+                                 .Select(i => new InGameTranslator.LanguageID(i)))
+                    {
+                        path = $"{dirPath}/{LocalizationTranslator.LangShort(lan)}.txt";
+                        if (File.Exists(AssetManager.ResolveFilePath(path)))
+                            break;
+                    }
+                }
+                
+                if (!File.Exists(AssetManager.ResolveFilePath(path)))
+                {
+                    var info = new DirectoryInfo(dirPath);
+                    var files = info.GetFiles("*.txt");
+                    if (files.Length > 0)
+                    {
+                       path = files[0].FullName;
+                       Plugin.LogWarning("Custom Chatlog",$"File incorrect file name:{files[0].Name}, At path:{path}");
+                    }
+                }
                 if (!File.Exists(AssetManager.ResolveFilePath(path)))
                 {
                     Plugin.LogError("Custom Chatlog No file Error", $"Can't find chatlog file At {dirPath}");

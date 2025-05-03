@@ -7,8 +7,6 @@ using On.Menu;
 using SlugBase;
 using SlugBase.Features;
 using UnityEngine;
-using UnityEngine.Diagnostics;
-using static CustomSlugcatUtils.Hooks.CustomEdibleHooks;
 
 namespace CustomSlugcatUtils.Hooks
 {
@@ -52,10 +50,10 @@ namespace CustomSlugcatUtils.Hooks
                             Mathf.FloorToInt(foodPoint),
                             Mathf.FloorToInt((foodPoint - Mathf.FloorToInt(foodPoint)) * 4)));
                     }
-                    else if (obj.TryGet("forbiddenType") is { } any2)
+                    else if (obj.TryGet("forbidden_type") is { } any2)
                     {
                         re.edibleDatas.Add(new CustomEdibleData.FoodData(
-                            ToCustomType(any2), -1, -1));
+                            ToCustomType(any2), -1, -1));   
                     }
 
                 }

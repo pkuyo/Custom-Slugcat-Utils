@@ -170,9 +170,23 @@ namespace CustomSlugcatUtils.Hooks
             var path = $"text/oracle/{folderName}/text_{LocalizationTranslator.LangShort(Custom.rainWorld.inGameTranslator.currentLanguage)}/{fileName}.txt";
             if (!File.Exists(AssetManager.ResolveFilePath(path)))
                 path = $"text/oracle/{folderName}/text_{LocalizationTranslator.LangShort(InGameTranslator.LanguageID.English)}/{fileName}.txt";
+            
             if (!File.Exists(AssetManager.ResolveFilePath(path)))
             {
-                conversation.events.Add(new Conversation.TextEvent(conversation, 0, $"Can't find conversation file At {path}", 200));
+                foreach (var id in InGameTranslator.LanguageID.values.entries.Where(i =>
+                                 i != Custom.rainWorld.inGameTranslator.currentLanguage.value &&
+                                 i != InGameTranslator.LanguageID.English.value)
+                             .Select(i => new InGameTranslator.LanguageID(i)))
+                {
+                    path = $"text/oracle/{folderName}/text_{LocalizationTranslator.LangShort(id)}/{fileName}.txt";
+                    if (File.Exists(AssetManager.ResolveFilePath(path)))
+                        break;
+                }
+            }
+            
+            if (!File.Exists(AssetManager.ResolveFilePath(path)))
+            {
+                conversation.events.Add(new TextEvent(conversation, 0, $"Can't find conversation file At {path}", 200));
                 Plugin.LogError("Custom Oracle No file Error", $"Can't find conversation file At {path}");
                 return;
             }
@@ -280,8 +294,23 @@ namespace CustomSlugcatUtils.Hooks
             if (fileName == null)
                 return;
             var path = $"text/oracle/{folderName}/text_{LocalizationTranslator.LangShort(box.hud.rainWorld.inGameTranslator.currentLanguage)}/{fileName}.txt";
+            
             if (!File.Exists(AssetManager.ResolveFilePath(path)))
                 path = $"text/oracle/{folderName}/text_{LocalizationTranslator.LangShort(InGameTranslator.LanguageID.English)}/{fileName}.txt";
+            
+            if (!File.Exists(AssetManager.ResolveFilePath(path)))
+            {
+                foreach (var id in InGameTranslator.LanguageID.values.entries.Where(i =>
+                                 i != box.hud.rainWorld.inGameTranslator.currentLanguage.value &&
+                                 i != InGameTranslator.LanguageID.English.value)
+                             .Select(i => new InGameTranslator.LanguageID(i)))
+                {
+                    path = $"text/oracle/{folderName}/text_{LocalizationTranslator.LangShort(id)}/{fileName}.txt";
+                    if (File.Exists(AssetManager.ResolveFilePath(path)))
+                        break;
+                }
+            }
+
             if (!File.Exists(AssetManager.ResolveFilePath(path)))
             {
                 box.NewMessage($"Can't find dialog file At {path}", 200);;
@@ -581,6 +610,9 @@ namespace CustomSlugcatUtils.Hooks
                         case "move":
                             ss.SetNewDestination(new Vector2(float.Parse(eventData.args[0]), float.Parse(eventData.args[1])));
                             break;
+                        default:
+                            owner.SpecialEvent(eventData.eventName);
+                            break;
                     }
                 }
             }
@@ -793,14 +825,31 @@ namespace CustomSlugcatUtils.Hooks
             On.SLOracleBehaviorHasMark.TalkToDeadPlayer += SLOracleBehaviorHasMark_TalkToDeadPlayer;
             On.SLOracleBehaviorHasMark.InitateConversation += SLOracleBehaviorHasMark_InitateConversation;
             On.SLOracleBehaviorHasMark.PlayerReleaseNeuron += SLOracleBehaviorHasMark_PlayerReleaseNeuron;
+            On.SLOracleBehaviorHasMark.PlayerHoldingSSNeuronsGreeting += SLOracleBehaviorHasMark_PlayerHoldingSSNeuronsGreeting;
+        }
+
+        private static void SLOracleBehaviorHasMark_PlayerHoldingSSNeuronsGreeting(On.SLOracleBehaviorHasMark.orig_PlayerHoldingSSNeuronsGreeting orig, SLOracleBehaviorHasMark self)
+        {
+            if (TryGetModule(self, out var module) &&
+                module.oracleData.otherConversations.TryGetValue("HoldingSSNeuronsGreeting", out var ev))
+            {
+                self.dialogBox.LoadTextFromCustomFile(module.oracleData.folderPath, ev.eventName,
+                    ev.random ? '^' : null);
+                return;
+            }
+            orig(self);
         }
 
         private static void SLOracleBehaviorHasMark_PlayerReleaseNeuron(On.SLOracleBehaviorHasMark.orig_PlayerReleaseNeuron orig, SLOracleBehaviorHasMark self)
         {
             if (TryGetModule(self, out var module) &&
                 module.oracleData.otherConversations.TryGetValue("ReleaseNeuron", out var ev))
-                self.dialogBox.LoadTextFromCustomFile(module.oracleData.folderPath, ev.eventName, ev.random ? '^' : null);
-            
+            {
+                self.dialogBox.LoadTextFromCustomFile(module.oracleData.folderPath, ev.eventName,
+                    ev.random ? '^' : null);
+                return;
+            }
+
             orig(self);
         }
 
@@ -964,6 +1013,7 @@ namespace CustomSlugcatUtils.Hooks
     {
         public static void ReadOracleData()
         {
+            var settings = new JsonSerializerSettings { MissingMemberHandling = MissingMemberHandling.Error};
             foreach (var path in ModManager.ActiveMods.Select(i => i.basePath))
             {
                 if (Directory.Exists(Path.Combine(path, "slugcatutils", "oracle")))
@@ -973,7 +1023,7 @@ namespace CustomSlugcatUtils.Hooks
                     {
                         try
                         {
-                            var data = JsonConvert.DeserializeObject<OracleData>(File.ReadAllText(info.FullName));
+                            var data = JsonConvert.DeserializeObject<OracleData>(File.ReadAllText(info.FullName),settings);
                             if (Datas.Any(i => i.oracleId == data.oracleId && i.slugcatId == data.slugcatId))
                                 Plugin.LogError("Custom Oracle", $"Save Id at:{data.oracleId}-{data.slugcatId}");
                             Datas.Add(data);
@@ -1005,7 +1055,7 @@ namespace CustomSlugcatUtils.Hooks
                     return Compare(session.saveState.miscWorldSaveData.SLOracleState.leaves, float.Parse(args[1]),
                         args[0]);
                 }
-
+    
                 return false;
             }));
 
@@ -1081,7 +1131,6 @@ namespace CustomSlugcatUtils.Hooks
                         args[0]);
                 return false;
             }));
-
 
             RegisterCondition("SSHalcyonStolen", ((game, _) =>
             {

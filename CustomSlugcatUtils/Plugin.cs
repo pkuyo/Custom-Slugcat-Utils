@@ -19,39 +19,34 @@ namespace CustomSlugcatUtils
     {
         public const string ModId = "CustomSlugcatUtils";
 
-        public const string Version = "0.1.2";
+        public const string Version = "1.0.0";
         public void OnEnable()
         {
             On.RainWorld.PostModsInit += RainWorld_PostModsInit;
             On.RainWorld.OnModsInit += RainWorld_OnModsInit;
+            //On.RWCustom.Custom.Log += (_, values) => Debug.Log(string.Join(" ", values));
         }
 
         private void RainWorld_OnModsInit(On.RainWorld.orig_OnModsInit orig, RainWorld self)
         {
             Plugin.Log($"Mod Version:{Version}");
-            try
-            {
-                orig(self);
-            }
-            catch (Exception e)
-            {
-                Debug.LogException(e);
-            }
+     
+            orig(self);
+         
 
             try
             {
                 if (!isLoaded)
                 {
+                    isLoaded = true;
+
                     StartCoroutine(ErrorTracker.LateCreateExceptionTracker());
                     SessionHooks.OnModsInit();
                     DevToolsHooks.OnModsInit();
                     CraftHooks.OnModsInit();
                     CustomGrababilityHooks.OnModsInit();
                     CustomEdibleHooks.OnModInit();
-                    OracleHooks.OnModsInit();
-                        
-                    isLoaded = true;
-
+                    OracleHooks.OnModsInit();   
                 }
 
             }
@@ -71,12 +66,13 @@ namespace CustomSlugcatUtils
             {
                 if (!isPostLoaded)
                 {
+                    isPostLoaded = true;
+
                     CycleLimitHooks.OnModInit();
                     ChatLogHooks.OnModsInit();
                     PlayerGraphicsHooks.OnModsInit();
                     CoopHooks.OnModsInit();
                     
-                    isPostLoaded = true;
                 }
             }
             catch (Exception e)
@@ -84,14 +80,8 @@ namespace CustomSlugcatUtils
                 ErrorTracker.TrackError(e, "Custom Slugcat Utils PostModsInit Failed!");
                 Debug.LogException(e);
             }
-            try
-            {
-                orig(self);
-            }
-            catch (Exception e)
-            {
-                Debug.LogException(e);
-            }
+            
+            orig(self);
         }
 
 
@@ -107,12 +97,19 @@ namespace CustomSlugcatUtils
         {
             Debug.Log($"[Custom Slugcat Utils] {m}");
         }
-
+        public static void LogWarning(object m)
+        {
+            Debug.LogWarning($"[Custom Slugcat Utils] {m}");
+        }
         public static void Log(object header, object m)
         {
             Debug.Log($"[Custom Slugcat Utils - {header}] {m}");
         }
-
+        
+        public static void LogWarning(object header, object m)
+        {
+            Debug.LogWarning($"[Custom Slugcat Utils - {header}] {m}");
+        }
 
         public static void LogError(object header, object m)
         {
