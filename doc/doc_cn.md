@@ -398,7 +398,6 @@
 | ThrowOut_Polite_ThrowOut | 礼貌地扔出蛞蝓猫                            |
 | ThrowOut_KillOnSight     | 杀死蛞蝓猫后扔出                            |
 | Moon_SlumberParty        | DM专用，使迭代器进入可以给蛞蝓猫阅读珍珠的状态，扔出珍珠会被捕获阅读 |
-| Pebbles_SlumberParty     | SS专用，使迭代器进入可以给蛞蝓猫阅读珍珠的状态，扔出珍珠会被捕获阅读 |
 
 触发事件将从 text\oracle\SlugcatID\text_`lang`\
 调取对应事件名称的txt文本

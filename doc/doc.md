@@ -393,7 +393,6 @@ Set iterator behavior in this folder
 | ThrowOut_Polite_ThrowOut | Politely throw the slugcat out                            |
 | ThrowOut_KillOnSight     | After killing the slugcat, throw it out                            |
 | Moon_SlumberParty        | DM-exclusive: Enable the iterator to enter a state where the slugcat can read the pearl. When the pearl is thrown, it will be captured and read. |
-| Pebbles_SlumberParty     | SS-exclusive: Enable the iterator to enter a state where the slugcat can read the pearl. When the pearl is thrown, it will be captured and read. |
 
 The triggered event will retrieve the corresponding event name's txt file from `text\oracle\SlugcatID\text_`lang`\` and execute the preset behaviors and dialogues within the text.
 
