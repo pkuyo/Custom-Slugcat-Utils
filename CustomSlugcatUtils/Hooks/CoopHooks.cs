@@ -39,6 +39,30 @@ namespace CustomSlugcatUtils.Hooks
                 }
             }
         }
+
+        private static SlugcatStats.Name GetRealSlugcatCharacter(AbstractCreature abstrPlayer)
+        {
+            SlugcatStats.Name name;
+            if (abstrPlayer.realizedCreature is Player player)
+            {
+                name = player.slugcatStats.name;
+            }
+            else
+            {
+                name = (abstrPlayer.state as PlayerState).slugcatCharacter;
+            }
+            return GetRealSlugcatCharacter(name);
+        }
+        private static SlugcatStats.Name GetRealSlugcatCharacter(SlugcatStats.Name name)
+        {
+            if (name.value.StartsWith("JollyPlayer"))
+            {
+                int id = int.Parse(name.value.Replace("JollyPlayer", "")) - 1;
+                SlugcatStats.Name realChar = RWCustom.Custom.rainWorld.options.jollyPlayerOptionsArray[id].playerClass;
+                return realChar;
+            }
+            return name;
+        }
         
         public static void OnModsInit()
         {
@@ -53,7 +77,19 @@ namespace CustomSlugcatUtils.Hooks
             On.JollyCoop.JollyHUD.JollyMeter.PlayerIcon.ctor += PlayerIcon_ctor;
             IL.JollyCoop.JollyHUD.JollyMeter.PlayerIcon.Update += PlayerIcon_Update;
             On.JollyCoop.JollyHUD.JollyPlayerSpecificHud.JollyDeathBump.ctor += JollyDeathBump_ctor;
+            On.HUD.PlayerSpecificMultiplayerHud.PlayerDeathBump.ctor += PlayerDeathBump_ctor;
 
+        }
+
+        private static void PlayerDeathBump_ctor(On.HUD.PlayerSpecificMultiplayerHud.PlayerDeathBump.orig_ctor orig, HUD.PlayerSpecificMultiplayerHud.PlayerDeathBump self, HUD.PlayerSpecificMultiplayerHud owner)
+        {
+            orig.Invoke(self, owner);
+            SlugcatStats.Name slugChar = GetRealSlugcatCharacter(owner.abstractPlayer);
+            if (Futile.atlasManager.DoesContainElementWithName($"atlas/{slugChar}_icon_kill"))
+            {
+                self.symbolSprite.element = Futile.atlasManager.GetElementWithName(
+                    $"atlas/{slugChar}_icon_kill");
+            }
         }
 
         private static void PlayerIcon_Update(ILContext il)
@@ -75,9 +111,10 @@ namespace CustomSlugcatUtils.Hooks
                 c.Emit(OpCodes.Ldarg_0);
                 c.EmitDelegate<Func<string, JollyMeter.PlayerIcon, string>>((str, self) =>
                 {
+                    SlugcatStats.Name slugChar = GetRealSlugcatCharacter(self.player);
                     if (Futile.atlasManager.DoesContainElementWithName(
-                            $"atlas/{self.playerState.slugcatCharacter}_icon_kill"))
-                        return $"atlas/{self.playerState.slugcatCharacter}_icon_kill";
+                            $"atlas/{slugChar}_icon_kill"))
+                        return $"atlas/{slugChar}_icon_kill";
                     return str;
                 });
             }
@@ -90,12 +127,13 @@ namespace CustomSlugcatUtils.Hooks
         private static void JollyDeathBump_ctor(JollyPlayerSpecificHud.JollyDeathBump.orig_ctor orig, JollyCoop.JollyHUD.JollyPlayerSpecificHud.JollyDeathBump self, JollyCoop.JollyHUD.JollyPlayerSpecificHud jollyhud)
         {
             orig(self, jollyhud);
+            SlugcatStats.Name slugChar = GetRealSlugcatCharacter(jollyhud.abstractPlayer);
             if (Futile.atlasManager.DoesContainElementWithName(
-                    $"atlas/{(jollyhud.abstractPlayer.state as PlayerState).slugcatCharacter}_icon_kill"))
+                    $"atlas/{slugChar}_icon_kill"))
             {
                 self.symbolSprite.element = Futile.atlasManager.GetElementWithName(
-                    $"atlas/{(jollyhud.abstractPlayer.state as PlayerState).slugcatCharacter}_icon_kill");
-                if (SlugBaseCharacter.TryGet((jollyhud.abstractPlayer.state as PlayerState).slugcatCharacter,
+                    $"atlas/{slugChar}_icon_kill");
+                if (SlugBaseCharacter.TryGet(slugChar,
                         out var character) && 
                     OverrideIconColor.TryGet(character, out var icon))
                     self.symbolSprite.color = icon;
@@ -138,7 +176,7 @@ namespace CustomSlugcatUtils.Hooks
             var index = il.Body.Variables.First(i => i.VariableType.FullName.Contains("SlugcatStats")).Index;
             c.Emit(OpCodes.Ldloc_S, (byte)index);
             c.EmitDelegate<Func<string, SlugcatStats.Name, string>>((s, id) =>
-                Futile.atlasManager.DoesContainElementWithName($"atlas/{id}_icon") ? $"atlas/{id}_icon" : s);
+                Futile.atlasManager.DoesContainElementWithName($"atlas/{GetRealSlugcatCharacter(id)}_icon") ? $"atlas/{GetRealSlugcatCharacter(id)}_icon" : s);
 
             c.GotoNext(MoveType.After, i => i.MatchCall<PlayerGraphics>("DefaultSlugcatColor"));
             c.Emit(OpCodes.Ldloc_S, (byte)index);
@@ -156,10 +194,10 @@ namespace CustomSlugcatUtils.Hooks
             
             orig(self, meter, associatedPlayer, color);
             if (associatedPlayer.state is PlayerState state &&
-                Futile.atlasManager.DoesContainElementWithName($"atlas/{state.slugcatCharacter}_icon"))
+                Futile.atlasManager.DoesContainElementWithName($"atlas/{GetRealSlugcatCharacter(associatedPlayer)}_icon"))
             {
                 self.iconSprite.element =
-                    Futile.atlasManager.GetElementWithName($"atlas/{state.slugcatCharacter}_icon");
+                    Futile.atlasManager.GetElementWithName($"atlas/{GetRealSlugcatCharacter(associatedPlayer)}_icon");
          
             }
         }
@@ -171,7 +209,7 @@ namespace CustomSlugcatUtils.Hooks
             var index = il.Body.Variables.First(i => i.VariableType.FullName.Contains("SlugcatStats")).Index;
             c.Emit(OpCodes.Ldloc_S, (byte)index);
             c.EmitDelegate<Func<string, SlugcatStats.Name, string>>((s, id) =>
-                Futile.atlasManager.DoesContainElementWithName($"atlas/{id}_icon") ? $"atlas/{id}_icon" : s);
+                Futile.atlasManager.DoesContainElementWithName($"atlas/{GetRealSlugcatCharacter(id)}_icon") ? $"atlas/{GetRealSlugcatCharacter(id)}_icon" : s);
         }
 
         private static string JollyPlayerSelector_GetPupButtonOffName(
@@ -198,8 +236,8 @@ namespace CustomSlugcatUtils.Hooks
 
         private static IconSymbol.IconSymbolData CreatureSymbol_SymbolDataFromCreature(On.CreatureSymbol.orig_SymbolDataFromCreature orig, AbstractCreature creature)
         {
-            if (creature.state is PlayerState state && Futile.atlasManager.DoesContainElementWithName($"atlas/{state.slugcatCharacter}_icon"))
-                return new IconSymbol.IconSymbolData(new CreatureTemplate.Type($"CSU_atlas/{state.slugcatCharacter}_icon"), AbstractPhysicalObject.AbstractObjectType.Creature, -1);
+            if (creature.state is PlayerState state && Futile.atlasManager.DoesContainElementWithName($"atlas/{GetRealSlugcatCharacter(creature)}_icon"))
+                return new IconSymbol.IconSymbolData(new CreatureTemplate.Type($"CSU_atlas/{GetRealSlugcatCharacter(creature)}_icon"), AbstractPhysicalObject.AbstractObjectType.Creature, -1);
             return orig(creature);
         }
     }
