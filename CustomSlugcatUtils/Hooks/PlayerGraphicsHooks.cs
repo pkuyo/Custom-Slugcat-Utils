@@ -139,7 +139,6 @@ namespace CustomSlugcatUtils.Hooks
 
                 if (i == 11 && !str.StartsWith("pixel"))
                     sprite.scale = 1;
-                sprite.color = Color.white;
                 if (str.StartsWith("PlayerArm") ||
                     str.StartsWith("Face") ||
                     str.StartsWith("Head") ||
